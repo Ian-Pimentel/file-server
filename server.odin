@@ -8,7 +8,10 @@ LOCAL_PORT :: 8080
 
 main :: proc() {
 	local_addr := net.parse_address(LOCAL_IP)
-	assert(local_addr != nil, "Failed to parse local address")
+	if local_addr == nil {
+  		fmt.eprintln("Failed to parse local address")
+    	return
+	}
 
 	endpoint := net.Endpoint {
 		address = local_addr,
@@ -18,7 +21,10 @@ main :: proc() {
 	socket, err_init := net.listen_tcp(endpoint)
 	defer net.close(socket)
 
-	assert(err_init == nil, "Failed to create listener socket")
+	if err_init != nil { 
+		fmt.eprintln("Failed to create listener socket", err_init)
+		return
+	}
 	
 	fmt.printfln("Listening on %s:%d", LOCAL_IP, LOCAL_PORT)
 
@@ -33,26 +39,26 @@ main :: proc() {
 
 		buffer: [256]byte
 		for {
-			bytes_recv, err_recv := net.recv_tcp(client, buffer[:])
+			num_recv, err_recv := net.recv_tcp(client, buffer[:])
 			if err_recv != nil {
-				fmt.eprintln("Failed to receive data")
+				fmt.eprintln("Failed to receive data", err_recv)
 				break
 			}
-			if bytes_recv == 0 {
+			if num_recv == 0 {
 				fmt.println("Disconnecting client...")
 				break
 			}
 
-			received := buffer[:bytes_recv]
-			fmt.printfln("Server received [ %d bytes ]: %s", bytes_recv, received)
+			bytes_recv := buffer[:num_recv]
+			fmt.printfln("Server received [ %d bytes ]: %s", num_recv, bytes_recv)
 
-			bytes_sent, err_sent := net.send_tcp(client, received)
+			num_sent, err_sent := net.send_tcp(client, bytes_recv)
 			if err_sent != nil {
-				fmt.eprintln("Failed to send data")
+				fmt.eprintln("Failed to send data", err_sent)
 				break
 			}
-			sent := received[:bytes_sent]
-			fmt.printfln("Server sent [ %d bytes ]: %s", bytes_sent, sent)
+			sent_bytes := bytes_recv[:num_sent]
+			fmt.printfln("Server sent [ %d bytes ]: %s", num_sent, sent_bytes)
 		}
 	}
 }
